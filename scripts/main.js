@@ -3,6 +3,7 @@ var player = (function() {//Namespace todo lo que esta aqui dentro es privado
         fullscreen  = document.getElementById("expand"),
         playlist    = document.getElementById("playlist"),
         audioVolume = document.getElementById("audioVolume"),
+		progressBackground = document.getElementById("progressBar"),
         progress    = document.getElementById('progress'),
         start       = document.getElementById('start'),
         finish      = document.getElementById('finish'),
@@ -10,7 +11,24 @@ var player = (function() {//Namespace todo lo que esta aqui dentro es privado
 
     var mediaPlayer, // global para que los listener sepan el estado a modificar
         currentTrack = "0", // que video se esta reproduciendo ahora.
-         videos, videoNodes;
+         videos, videoNodes, loop;
+		 
+	/*
+	// SI SE DESEA TENER SEEK  SE DEBE DESCOMENTAR Y EDITAR DOS NÚMEROS.
+	// ESTOS SE PUEDEN CONSEGUIR HACIENDO CONSOLE.LOG.
+	progressBackground.addEventListener("click", function(e) {
+		var x = e.pageX - this.offsetLeft, // or e.offsetX (less support, though)
+		y = e.pageY - this.offsetTop, // or e.offsetY
+		clickedValue = (x * this.max) / this.offsetWidth;
+
+    var time = videos[parseInt(currentTrack)].duration.split(":");
+    var totalTime = parseInt(time[0]) * 60 + parseInt(time[1]);
+	
+    x = parseInt(((x - 222) * 100) / 57);
+	
+    mediaPlayer.currentTime = parseInt((x * totalTime) / 100);
+	
+	});*/
     
     play.addEventListener("click", (e) => {
         if (mediaPlayer.paused || mediaPlayer.ended)  {
@@ -52,6 +70,27 @@ var player = (function() {//Namespace todo lo que esta aqui dentro es privado
             mediaPlayer.addEventListener('canplay',videoIsReady)
         }
     });
+	
+	function autoSkip(e) {
+		var id,
+		reproducir = true;
+		
+		if (parseInt(currentTrack) == videos.length - 1) {
+			id = 0;
+			if (!loop) {
+				reproducir = false;
+			}
+		} else {
+			id = parseInt(currentTrack) + 1;
+		}
+
+		if (reproducir) {
+			preload.classList.add("lds-ring");
+			higlight(id.toString(), currentTrack.toString());
+			set(videos[id].source);
+			mediaPlayer.addEventListener("canplay", videoIsReady);
+		}
+	}
 
     function set(video) {
         mediaPlayer.src = video;
@@ -75,8 +114,13 @@ var player = (function() {//Namespace todo lo que esta aqui dentro es privado
      */
     function togglePlay(event){
         event.preventDefault();
-        if (mediaPlayer.paused || mediaPlayer.ended)  mediaPlayer.play();
-        else  mediaPlayer.pause();
+        if (mediaPlayer.paused || mediaPlayer.ended) {
+			mediaPlayer.play();
+			play.children[0].setAttribute("class", "fas fa-pause");
+		} else {
+			mediaPlayer.pause();
+			play.children[0].setAttribute("class", "fas fa-play");
+		}
     }
 
     /**
@@ -130,7 +174,18 @@ var player = (function() {//Namespace todo lo que esta aqui dentro es privado
 
     function videoIsReady(event) {
         preload.classList.remove('lds-ring');
-        mediaPlayer.play();
+        var promise = mediaPlayer.play();
+		if (promise !== undefined) {
+			promise.then(_ => {
+			  // Autoplay started!
+			  if (!mediaPlayer.muted) {
+				audioVolume.setAttribute("class", "fas fa-volume-up");
+			  }
+			})
+			.catch(error => {
+				play.setAttribute("class", "fas fa-play");
+			});
+		}
     }
 
     function higlight(current, lastTrack) {
@@ -183,10 +238,12 @@ var player = (function() {//Namespace todo lo que esta aqui dentro es privado
             mediaPlayer.controls = false;
             mediaPlayer.muted    = true; 
             getVideos();
+			loop = false;
             //cuando el video pueda reproducirse elimina el preloader css
             mediaPlayer.addEventListener('canplay', videoIsReady)
             mediaPlayer.addEventListener('timeupdate', handleProgress)
             mediaPlayer.addEventListener('click', togglePlay)
+			mediaPlayer.addEventListener("ended", autoSkip, false)
         }
     }
 })();
