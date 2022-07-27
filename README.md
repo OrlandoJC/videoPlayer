@@ -1,2 +1,2 @@
 # videoPlayer
-A pure javascript video player
+A pure javascript video player library
